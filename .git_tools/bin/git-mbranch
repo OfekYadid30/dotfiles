@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""git mbranch [-n COUNT]
+
+Show the most recently visited branches (newest first), derived from HEAD's
+reflog. Defaults to the last 20.
+"""
+
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+from gitm.cli import run_main
+from gitm.reflog import recent_branches
+from gitm.refs import current_branch
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="git mbranch", description=__doc__)
+    parser.add_argument("-n", "--count", type=int, default=20, help="how many branches to show (default: 20)")
+    args = parser.parse_args()
+
+    visits = recent_branches(args.count)
+    if not visits:
+        print("no branch checkouts found in HEAD's reflog")
+        return
+
+    here = current_branch()
+    width = max(len(v.branch) for v in visits)
+    for visit in visits:
+        marker = "*" if visit.branch == here else " "
+        print(f"{marker} {visit.branch.ljust(width)}  {visit.when}")
+
+
+if __name__ == "__main__":
+    run_main(main)

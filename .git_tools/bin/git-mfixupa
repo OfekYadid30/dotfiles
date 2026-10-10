@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""git mfixupa [--branch BRANCH] [--squash]
+
+Fixup every tracked-but-unstaged file into the commit(s) that last touched
+it, creating a `fixup!` commit per file. They stay as their own commits --
+nothing is rebased or squashed away unless you pass --squash.
+
+For each file with unstaged changes, only commits ahead of the default
+branch (master, unless overridden) are considered as fixup targets --
+never something already merged into it:
+  - exactly one candidate  -> fixup into it automatically
+  - several candidates     -> open a picker (same as `git mfixup`), labeled
+                              with which file it's for
+  - none                   -> the file is skipped
+
+Refuses to run if anything is already staged, to avoid mixing unrelated
+changes into the fixups it creates.
+
+If a pre-commit hook reformats a file and fails the commit, the file is
+re-staged and the commit retried automatically (see gitm.fixup).
+"""
+
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+from gitm.cli import CliError, add_branch_args, add_squash_arg, fixing_up_header, info, run_main
+from gitm.fixup import autosquash_rebase, commit_fixup_with_retry, staged_paths
+from gitm.gitrun import capture_lines, run
+from gitm.picker import pick_commit
+from gitm.refs import commits_ahead, default_branch
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="git mfixupa", description=__doc__)
+    add_branch_args(parser)
+    add_squash_arg(parser)
+    args = parser.parse_args()
+
+    if staged_paths():
+        raise CliError(
+            "there are already staged changes; unstage them first "
+            "(`git restore --staged .`) so mfixupa isn't mixing them into its fixups"
+        )
+
+    branch = default_branch(args.branch, args.remote)
+    files = capture_lines(["diff", "--name-only"])
+    if not files:
+        raise CliError("no tracked files have unstaged changes; nothing to do")
+
+    fixed_up = []
+    skipped = []
+    for path in files:
+        target = _resolve_target(path, branch, args.remote)
+        if target is None:
+            skipped.append(path)
+            continue
+        info(f"{path}: fixing up into {target.short} {target.subject}")
+        run(["add", "--", path])
+        commit_fixup_with_retry(target.sha)
+        fixed_up.append(path)
+
+    if not fixed_up:
+        raise CliError("no file could be matched to a commit; nothing was fixed up")
+
+    if args.squash:
+        autosquash_rebase(branch, args.remote)
+
+    info(f"fixed up {len(fixed_up)} file(s)")
+    if skipped:
+        info(f"skipped (no commit ahead of {args.remote}/{branch} touches them): {', '.join(skipped)}")
+
+
+def _resolve_target(path: str, branch: str, remote: str):
+    candidates = commits_ahead(branch, remote, paths=[path])
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+    return pick_commit(candidates, header=fixing_up_header([path]))
+
+
+if __name__ == "__main__":
+    run_main(main)

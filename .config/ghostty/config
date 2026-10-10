@@ -1,0 +1,21 @@
+theme = Rose Pine
+font-family = "Fira Code"
+font-size = 15
+font-thicken = true
+font-variation = wght=500
+adjust-cell-width = -4%
+adjust-cell-height = -8%
+cursor-style = block
+cursor-style-blink = true
+background-blur = true
+window-padding-x = 6
+window-padding-y = 6
+mouse-hide-while-typing = true
+copy-on-select = true
+scrollback-limit = 10000
+background-opacity = 1
+keybind = ctrl+shift+c=copy_to_clipboard
+keybind = ctrl+shift+v=paste_from_clipboard
+
+# mac os related conf (remove if in linux)
+macos-option-as-alt = true

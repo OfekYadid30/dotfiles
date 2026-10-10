@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# tmux_sessionizer - build tmux sessions from declarative TOML files.
+#
+# A launcher rather than an installed console script: this is a plain directory,
+# not a package, so the entry point just puts it on sys.path and hands over.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+exec "${TMUX_SESSIONIZER_PYTHON:-python3}" -c \
+    'import sys; sys.path.insert(0, sys.argv.pop(1)); from tmux_sessionizer.cli import main; sys.exit(main())' \
+    "$root" "$@"

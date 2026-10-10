@@ -1,0 +1,54 @@
+[alias]
+    # --- common shortcuts ---
+    st = status
+    co = checkout
+    br = branch
+    ci = commit
+    a = add -A
+    bd = branch -d
+    ca = commit -a --amend
+    can = commit -a --amend --no-edit
+    cm = commit -m
+    cma = commit -am
+    cl = clone --recursive
+    cb = checkout -b
+    lg = log --all --decorate --oneline --graph
+    p = push
+    pf = push -f
+    po = push origin
+    pl = pull
+    plo = pull origin
+    smu = submodule update --init --recursive
+
+    # --- diff-related aliases ---
+    mdiffp = "!f() { git diff HEAD~${1:-0}; }; f"                   # diff from N commits back (default 0: local changes vs HEAD)
+    mdiffo = "!git diff origin/$(git branch --show-current)"         # diff from origin branch
+    mdiffm = "!git diff origin/master"                              # diff from origin/master
+
+    # --- log / rebase / push helpers ---
+    mrebase = "!f() { \
+        branch=${1:-master}; \
+        git rebase -i origin/$branch; \
+    }; f"                                                          # interactive rebase onto origin/<branch> (default master)
+
+    mpush = "!f() { \
+        branch=${1:-master}; \
+        git rebase -i origin/$branch && \
+        git push origin HEAD; \
+    }; f"                                                          # rebase onto origin/<branch> then push
+
+    # --- python-based git-tools (~/.git_tools) ---
+    # Branch defaults to "master" (not auto-detected). Override per-repo
+    # with: git config gitm.default-branch <branch>, or pass --branch <name>.
+    fixup = "!~/.git_tools/bin/git-mfixup"                          # kept as an alias to mfixup, for muscle memory
+    mlog = "!~/.git_tools/bin/git-mlog"                              # log of commits ahead of the default branch
+    mlogf = "!~/.git_tools/bin/git-mlogf"                            # same as mlog, but lists changed files per commit (mlog --stat)
+    mfixup = "!~/.git_tools/bin/git-mfixup"                          # fixup staged changes into a chosen commit (creates a fixup! commit; add --squash to also autosquash immediately)
+    mfixupa = "!~/.git_tools/bin/git-mfixupa"                        # fixup every unstaged file into the commit(s) that touched it (same --squash option)
+    msquash = "!~/.git_tools/bin/git-msquash"                        # condense multiple fixup! commits per target into one (doesn't touch the target)
+    mbranch = "!~/.git_tools/bin/git-mbranch"                        # show recently visited branches
+    morder = "!f() { git mfixupa \"$@\" && git msquash \"$@\"; }; f"  # mfixupa, then msquash (args like --branch go to both)
+
+# Machine-specific additions. Last, so anything set there wins over the above.
+[include]
+    path = ~/.gitconfig.personal

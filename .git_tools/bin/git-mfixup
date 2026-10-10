@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""git mfixup [commit-sha] [--branch BRANCH] [--all] [--squash]
+
+Fixup currently-staged changes into a chosen commit, creating a `fixup!`
+commit on top of HEAD. It stays as its own commit -- nothing is rebased or
+squashed away unless you pass --squash.
+
+Without a commit-sha, opens an interactive picker (fzf if installed) over the
+commits HEAD has ahead of the default branch. Pass --all to pick from the
+full history instead. Pass a commit-sha directly to skip the picker.
+"""
+
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+from gitm.cli import CliError, add_branch_args, add_squash_arg, fixing_up_header, run_main
+from gitm.fixup import autosquash_rebase, commit_fixup_with_retry, require_staged_paths
+from gitm.picker import pick_commit
+from gitm.refs import all_commits, commits_ahead, default_branch
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="git mfixup", description=__doc__)
+    parser.add_argument("commit", nargs="?", help="target commit-sha (skips the picker)")
+    add_branch_args(parser)
+    parser.add_argument("--all", action="store_true", help="pick from full history, not just commits ahead of the default branch")
+    add_squash_arg(parser)
+    args = parser.parse_args()
+
+    staged = require_staged_paths()
+
+    branch = default_branch(args.branch, args.remote)
+    target = args.commit or _pick_target(branch, args.remote, args.all, staged)
+
+    commit_fixup_with_retry(target)
+    if args.squash:
+        autosquash_rebase(branch, args.remote)
+
+
+def _pick_target(branch: str, remote: str, use_all: bool, staged: list[str]) -> str:
+    candidates = all_commits() if use_all else commits_ahead(branch, remote)
+    if not candidates:
+        raise CliError(f"no commits found ahead of {remote}/{branch}; try --all")
+    chosen = pick_commit(candidates, header=fixing_up_header(staged))
+    if chosen is None:
+        raise CliError("no commit selected")
+    return chosen.sha
+
+
+if __name__ == "__main__":
+    run_main(main)

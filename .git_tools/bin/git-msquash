@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""git msquash [--branch BRANCH]
+
+Condense multiple `fixup!` commits that target the same commit into a single
+`fixup!` commit. If commit X has three `fixup! X` commits sitting on top of
+it (e.g. from running `mfixup`/`mfixupa` against it more than once), this
+merges those three into one -- it does NOT touch X itself, and does not
+autosquash anything into it. Run `git mrebase` (or `mfixup --squash`) later
+when you're ready to actually fold fixups into their targets.
+
+Targets with only a single fixup commit are left alone; there's nothing to
+condense.
+"""
+
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+from gitm.cli import add_branch_args, info, run_main
+from gitm.msquash import condense_fixups
+from gitm.refs import default_branch
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="git msquash", description=__doc__)
+    add_branch_args(parser)
+    args = parser.parse_args()
+
+    branch = default_branch(args.branch, args.remote)
+    groups = condense_fixups(branch, args.remote)
+
+    if not groups:
+        info("no target has more than one fixup! commit; nothing to condense")
+        return
+
+    for group in groups:
+        info(f"condensed {len(group.commits)} fixup! commits targeting: {group.target_subject}")
+
+
+if __name__ == "__main__":
+    run_main(main)

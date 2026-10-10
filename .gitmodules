@@ -1,0 +1,6 @@
+[submodule ".oh-my-zsh"]
+	path = .oh-my-zsh
+	url = https://github.com/ohmyzsh/ohmyzsh.git
+[submodule ".tmux/plugins/tmux-jump"]
+	path = .tmux/plugins/tmux-jump
+	url = https://github.com/schasse/tmux-jump
